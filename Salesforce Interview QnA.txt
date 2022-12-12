@@ -1,0 +1,987 @@
+﻿-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+																			Salesforce Interview QnA																		
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+																	Salesforce Org & Data Security Questions : 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+Q1.	Explain the difference between a creator and owner of records using a scenario.
+
+Ans. CreatedBy : API Name:CreatedById : Lookup(User) : It is the user who has created the record. This can not be changed. 
+				 It is just a System Information to track who created the record. Thus, it is called an audit field.
+
+	 OwnerId : Lookup(User) or Lookup(User,Group) : ID of the User who has been assigned to work upon this record.
+	 If you update this field, the previous owner's access becomes Read Only or the access specified in your organization-wide default, whichever is greater.
+
+	 OwnerId defines ownership and is used to give access to the user on the record in case that object access is set to private in your organization.	
+	 The Owner can be changed during the lifecycle of a record, but the CreatedBy value will always stay the same.
+	 
+	 Common Example : 
+	 
+	 A Support Manager creates a ticket(or case recoord) on the basis of a call recieved from Client and then assignes the ticket to Tier-1 support Rep.
+	 Owner : Tier 1 Support Rep
+	 Created By : Support Manager.
+	 
+#########################################################################################################################################################################################
+
+Q2. Can we set audit fields such as CreatedById, CreatedDate,etc on record creation?
+
+Ans. By default, salesforce fill these fields with the logged in User Id and current DateTime respectively.
+	 But, many a times, we import data into Salesforce and want to retain the audit field values of the source system. 
+	 In such cases, we need to Enable “Set Audit Fields upon Record Creation” and “Update Records with Inactive Owners” User Permissions under User Interface in the Quick Find box.
+	 Once you enable this preference, enable the permission “Set Audit Fields upon Record Creation“ in a permission set or profile.
+	 Assisgn that 'permission set' to the login user.
+	 
+	 We can set the values for audit fields on the following objects: 
+	 Account, ArticleVersion, Attachment, CampaignMember, Case, CaseComment, Contact, ContentVersion, Contract, Event, Idea, IdeaComment, Lead, Opportunity, Question, Task, Vote 
+	 and custom objects. 
+	 The only audit field we cannot set a value for is systemModstamp.
+	 
+	 Now, whenever, we insert a new record from apex or Data Loader or other APIs, these audit fields become editable.
+	 We can even fill the CreatedById field with an inactive user.
+
+#########################################################################################################################################################################################
+
+Q3. How to make record read-only just after creation (No one can edit it, not even creator)?
+
+Ans. 7 Ways to Lock a Record in Salesforce :
+	 
+	 1. Record Types & Workflow/Process Builder/Flow : Best Approach in my view : 2 page layouts(one should be fully read-only) and two record types. Switch to the read-only record type on condition.
+	 2. Record Types & Trigger
+	 3. Without Record Types – Validation Rule
+	 4. Without Record Types – Trigger
+	 5. Visualforce Page
+	 6. Approval Process
+	 7. Apex – Lock() and Unlock()
+	 
+#########################################################################################################################################################################################
+
+Q4. What happens if we don't give required fields while inserting data through insert or Database.insert or REST/SOAP API ?
+
+Ans. 
+	Always Required Standard Fields : 
+	Example : Name on Account object, LastName on Contact object. 
+
+		1.If we don't give always required standard fields while inserting data through insert or Database.insert, we encounter an error saying :
+		 System.DmlException: Insert failed. First exception on row 0; first error: REQUIRED_FIELD_MISSING, Required fields are missing : [fieldName]
+
+		2.If we don't give always required standard fields while inserting data through REST API or SOAP API, we encounter an error saying :
+		 message: Required fields are missing: [fieldName]
+		 errorCode: REQUIRED_FIELD_MISSING
+
+	Required Standard Fields : 
+	Standard fields don't have certain options available such as Required. This is working as designed.
+	Thus, standard fields which are not required by default are made required either through validation rules or page layout. 
+	Example : Phone field on Account.
+
+		1.If a field is marked required in a Validation Rule (Setup -> Object Manager -> Account -> Validation Rules (Valdiation Rule for Field) then,
+
+			*If we don't give required standard fields while inserting data through insert or Database.insert, we encounter an error saying :
+			 System.DmlException: Insert failed. First exception on row 0; first error: FIELD_CUSTOM_VALIDATION_EXCEPTION, Error Message	
+
+			*If we don't give required standard fields while inserting data through REST API or SOAP API, we encounter an error saying :
+			 message: validation rule error message
+			 errorCode: FIELD_CUSTOM_VALIDATION_EXCEPTION
+
+		2.If a field is marked required in a Page Layout ONLY (Setup -> Object Manager -> Account -> Page Layouts (Mark Field as Required in Layout Editor), then :
+
+			*If we don't give required standard fields while inserting data through insert or Database.insert, we don't encounter any error and record gets inserted.
+			*If we don't give required standard fields while inserting data through REST API or SOAP API, we don't encounter any error and record gets inserted.
+
+
+	Required Custom Fields :
+	Custom fields which are made required either through schema level or validation rules or page layout.
+
+	There are three levels to make a field required : 
+	1. At schema level(or field level)
+			This is the most restrictive of requirements, and it requires the field to be entered all the time, 
+			regardless of how the record is saved (i.e. through apex, an integration, the API, mass upload, or through the User Interface).
+	2. At Validation Rule level
+			ISBLANK(Enter_Custom_Field_API_Name_Here__c)
+			Or, if the field is a Number or Currency type field use this syntax: ISNULL(Enter_Custom_Field_API_Name_Here__c)
+			Like the field level setting, this will apply all the time, regardless of where the record is created or updated.
+	3. At the Page Layout level
+			This requirement only applies when the record is edited on the user interface.
+			Therefore, you could technically make the field required for some users that use a particular page layout but not others.			
+			But, when records are updated via API, field requirement does not apply. 
+
+		1.If a custom field is marked required in the Schema (Setup -> Object Manager -> Account -> Fields -> Click Custom Field (Mark true: Always require a value in this field in order to save a record), then :
+			
+			*If we don't give required custom fields while inserting data through insert or Database.insert, we encounter an error saying :
+			 System.DmlException: Insert failed. First exception on row 0; first error: REQUIRED_FIELD_MISSING, Required fields are missing : [fieldName]
+			 
+			*If we don't give required custom fields while inserting data through REST API or SOAP API, we encounter an error saying :
+			 message: Required fields are missing: [fieldName]
+			 errorCode: REQUIRED_FIELD_MISSING
+			 
+		2.If a custom field is marked required in a Validation Rule (Setup -> Object Manager -> Account -> Validation Rules (Valdiation Rule for Field) then,
+			 
+			*If we don't give required custom fields while inserting data through insert or Database.insert, we encounter an error saying :
+			 System.DmlException: Insert failed. First exception on row 0; first error: FIELD_CUSTOM_VALIDATION_EXCEPTION, Error Message
+			 
+			*If we don't give required custom fields while inserting data through REST API or SOAP API, we encounter an error saying :
+			 message: validation rule error message
+			 errorCode: FIELD_CUSTOM_VALIDATION_EXCEPTION
+			
+		3.If a field is marked required in a Page Layout ONLY (Setup -> Object Manager -> Account -> Page Layouts (Mark Field as Required in Layout Editor), then :
+		
+			*If we don't give required custom fields while inserting data through insert or Database.insert, we don't encounter any error and record gets inserted.
+			*If we don't give required custom fields while inserting data through REST API or SOAP API, we don't encounter any error and record gets inserted.
+			
+#########################################################################################################################################################################################
+			
+Q5.
+
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+																				Apex Questions : 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+Q1. In Apex, if we create a record and try to access a field which was not assigned any value before insert, will you get an error or not?
+	
+Ans. It will not return an error. It will return null value.
+
+	 Account acc = new Account(Name='xyz',Rating='Hot',Type='Prospect');
+	 insert acc;
+	 System.debug(acc.Description); //no error, but shows NULL
+	 
+Q2. What is 'Maximum Trigger Depth Exceeded' Error in Salesforce? How to avoid it?
+
+Ans. 'Maximum Trigger Depth Exceeded' is an exception which is caused mainly due to recursion in Trigger.
+
+	  To avoid this exception and repetitive execution of Trigger, we must implement a Boolean static variable in a helper class and set it to true.
+	  Everytime the trigger fires, keep a check if the boolean variable is true and then set it to false and execute the logic. 
+	  So, the boolean static variable value will always be false within the same execution context and 
+	  any class, trigger or code which is executing can refer to it and prevent the recursion.
+	  
+		Example:-
+		Class for storing boolean variable:
+
+		public class HelperClass
+		{
+				public static Boolean firstRun = true;
+		}
+		
+		Sample Trigger:
+
+		trigger AccountTrigger on Account(after insert, after update)
+		{
+			AccountHandlerController.perform(trigger.New);
+		}
+
+
+		Class for Trigger Handler: 
+
+		public class AccountTriggerHandler
+		{
+				if(HelperClass.firstRun) 
+				{						 
+						HelperClass.firstRun = false; // Once static variable is set to false, the next time a record updates, 
+													  // it won't enter the if condition and the trigger will not execute.
+													  
+						public static perform(List<Account> listAccount)
+						{
+							for(Account acct : listAccount)
+							{
+								..................
+								..................
+								..................
+							}
+							update listAccount;
+						}
+				}
+		}
+		
+
+Q3. If one object in Salesforce have 2 triggers which runs “before insert” or in any event, is there any way to control the sequence of execution of these triggers?
+
+Ans. Salesforce.com has documented that trigger sequence cannot be predefined. 
+	 As a best practice, create one trigger per object and use if blocks to separate different logic blocks. 
+	 Make a common sObject TriggerHandler class and make multiple methods for each set of business logic. 
+	 Now, we can call that method first in Trigger whose logic we wanted to be executed first in sequence.
+	 By having all logic in one trigger you may also be able to optimize on your SOQL queries.
+	 Also, you may use Trigger Factory Implementation.
+	 
+Q4. Can you please explain Declaration, instantiation, initialization and assignment in Apex?
+
+Ans. Account acc;  				   // introduction of a new variable acc of type Account. Thus declaration
+
+	 acc = new Account();   	   // new keyword creates a new instance of Account object. Also, reference variable acc got initialized with an instance of Account object. 
+									  Thus Instantiation and initialization together
+
+	 acc.Name = 'Test Account';    // = operator assigns a value to the reference variable. Thus assignment
+
+	 Account acc = new Account();  // Declaration, instantiation, initialization and assignment all happens together.
+	 
+Q5. What is Mixed DML Exception and how to avoid it?
+
+Ans. Mixed DML Exception occurs if we are trying to perform DML operations on setup and non-setup objects in the same transaction.
+	 Non-Setup objects are standard objects like Account or any custom object. Setup objects are Group, GroupMember, QueueSObject, User, UserRole, UserTerritory, Territory, etc.
+	 
+	 Why does this error exist?
+	 This restriction exists because some sObjects affect the user’s access to records in the org. 
+	 We must insert or update these types of sObjects in a different transaction to prevent operations from happening with incorrect access-level permissions. 
+	 For example, we cannot insert an account record and then insert a user record in a single transaction.
+	 
+	 So, to avoid this error, we generally use future method.
+	 Create a method that performs a DML operation on one type of sObject and Create a second method that uses the @future annotation to manipulate a second sObject type
+	 
+	 Example Code :
+
+	 public class MixedDMLError 
+	 {
+		public static void insertUserandLead() 
+		{
+			Profile pro = [SELECT Id FROM Profile WHERE Name='Standard User'];
+			UserRole r = [SELECT Id FROM UserRole WHERE Name='Blogger'];
+			User usr = new User(alias = 'hv', email='harshvats24@gmail.com', 
+				emailencodingkey='UTF-8', lastname='Vats', 
+				languagelocalekey='en_US', 
+				localesidkey='en_US', profileid = pro.Id, userroleid = r.Id,
+				timezonesidkey='America/Los_Angeles', 
+				username='harshvats24@gmail.com');
+			insert usr;
+			Handler.insertAccount(); 
+		}
+	 }
+	 
+	 
+	 public class Handler 
+	 {
+		@future
+		public static void insertAccount() 
+		{
+			Account testAccount = new Account(Name = 'HarshVats');
+			insert testAccount;
+		}
+     }
+
+Q6. 
+
+Ans. 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+																			Asynchronous Apex Questions : 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+Q1.	Why do we still use future methods if we have better asynchronous tool in the form of Queueable class ?
+
+Ans. Another reason to use future methods instead of queueable clss is when our functionality is sometimes executed synchronously, and sometimes asynchronously. 
+	 It’s much easier to refactor a method in this manner than converting to a queueable class. 
+	 This is handy when we discover that part of our existing code needs to be moved to asynchronous execution. 
+	 We can simply create a similar future method that wraps our synchronous method like so:
+	 
+	 @future
+	 static void myFutureMethod(List<String> params) 
+	 {
+		 // call synchronous method
+		 mySynchronousMethod(params);
+	 }
+
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+																				Lightning Questions : 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+Q1. What is cross site scripting (or) XSS ?
+
+Ans. Modern web applications allow for significant amounts of user interaction in the form of client-side JavaScript, 
+	 which permits functionality to be included inside of the internet browser itself. 
+	 Unfortunately, browser execution of JavaScript presents itself as a risk when the JavaScript that is executed does not originate from the application developer, 
+	 but comes instead from another user. 
+	 We call this cross-site scripting, or XSS for short.
+
+	 XSS is an injection vulnerability that occurs when an attacker inserts unauthorized JavaScript, VBScript, HTML, or other active content into a web page. 
+	 When subsequent users view the page, the malicious code executes or attacks the user. 
+	 For example, a malicious script can hijack the user’s session, submit unauthorized transactions, and even steal confidential information from the user.
+	 
+Q2. Why do we need My Domain enabled for lightning ?
+
+Ans. There are a number of reasons that My Domain is required. 
+	 The one that will make the most sense to us is with respect to Lightning Components. 
+	 Every Lightning Component has a "namespace". 
+	 If we use any managed package components or 3rd party apps, they always have their own "namespace" which is a reference to a custom domain. 
+	 This allows Salesforce to differentiate between our own code and the code from the managed package or components that are running in our org.
+
+	 Our Lightning Components can't share the same memory space as Lightning Components from a vendor. 
+	 By having My Domain enabled, they can more readily keep them separate. 
+	 Previously with Visualforce, this wasn't an issue since pretty much everything ran on the Server side in Apex through a Server Side controller, 
+	 not on the client side like Lightning does.
+
+Q3. 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+																		Lightning Aura Components Questions : 
+***************************************************************************************************************************************************************************************
+***************************************************************************************************************************************************************************************
+3. limitations of lightning out
+4. different lightning interfaces
+5. difference between application event and component event
+6. use case of both events
+7. why do we prefer component event over application event
+8. different use case of helper and controller
+9. why do we prefer lightning namespace component over SLDS
+10. default namespace in lightning, how to create your namespace
+11. request and response mechanism in lightning framework
+12. can we write data from lightning app
+13. does lightning app supports component event, why does it not support many standard events	 
+*****************************************************************************************************************************************************************
+************************************************************************************************************************************************************************
+																		Flow Questions : 
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+Q1. In flow, if we are using a record variable to create a record and have assigned values to certain fields before insert, 
+	and then try to access other fields without using a Get Records element,will you get an error or not?
+	
+Ans. It will throw an error. It will not return null value unlike apex class.
+	 
+Q2.
+
+Ans.
+
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+																	Salesforce Integration Questions : 
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+
+Q1. Explain Outbound Message in Salesforce?
+	
+Ans. Outbound message can be used to connect or pass the data from Salesforce to any other external system using SOAP API when triggered by a workflow rule.
+	 In the form of SOAP API notification a single SOAP message can include up to 100 notifications.
+	 Salesforce only understands that message is successfully delivered at the other end by receiving the acknowledgment.
+	 If the message from the other API (3rd party listening API to be precise) is “NOT OK” i.e. if the message failed to get delivered, 
+	 then Salesforce will try again and again within 24 hrs. 
+	 The frequency of trying again will keep decreasing based as the attempts increases and it keep getting failed.
+	 
+	 Use Case : 
+	 
+	 One common use case to use workflow outbound message is, to sync any 3rd party system when an account record is created in Salesforce or a lead is converted in Salesforce etc.
+	 
+Q2. Why do we send session Id with outbound message?
+
+Ans. We can pass Session ID with outbound message to get callback from the endpoint.
+
+Q3. What are the drawbacks or limitations of using outbound messages?
+
+Ans. Some limitations are given below : 
+		
+		1.There is no response logging mechanism
+		2.If end point does not send any acknowledgement, that means that a record will save at endpoint but show fail to sync at salesforce side.
+		3.The order that Outbound Messages arrive cannot be guaranteed.
+		4.Recieving endpoint service must implement Salesforces' outbound messaging WSDL.
+		5.REST is not an option for outbound messaging
+		
+Q4. What is Remote Site Settings Error in Salesforce? When does it appear?
+
+Ans. Remote Sites are external sites( or web addresses) that your organization can invoke from salesforce through Apex callout.
+	 But before any Apex callout can call an external site, that site must be registered in the Remote Site Settings page, otherwise the callout fails. 
+	 As Salesforce prevents calls to unauthorized network addresses, the below error appears : 
+	 
+	 System.CallOutException : Unauthorized endpoint, please check Setup->Security->Remote Site Settings.
+
+Q5. 
+
+*****************************************************************************************************************************************************************
+************************************************************************************************************************************************************************
+																		SOQL Questions : 
+*****************************************************************************************************************************************************************
+************************************************************************************************************************************************************************
+
+Q1. What is Upwards traversal and Downwards traversal in SOQL ? 
+
+Ans. Upwards traversal is used whenever there’s a lookup or master-detail field from the base object.
+	 For example, If you’re querying contacts, upwards traversal could pull data from the contact’s account.
+	 Query for multiple level upwards traversal : SELECT Account.Owner.Profile.CreatedBy.Name FROM Contact
+	 
+	 Downwards traversal is when you’re pulling records from a related list. 
+	 For example, if we’re doing a SOQL query on accounts, downwards traversal could pull data from the account’s contacts.
+	 Query for downward traversal : SELECT Id, Name, Industry, AnnualRevenue,( SELECT Name, Email, BirthDate FROM Contacts ) FROM Account
+	 
+	 ######################################################################################################################################################
+
+Q2. How you can use Datetime field as a criteria in SOQL Query ?
+	
+Ans. We cannot use Datetime as condition in Where Clause in between single Quotes.
+	 You can do something like this :
+	 WHERE CreatedDate > 2005-10-08T00:00:00Z
+
+     Or, you can also use Date Literals like this :
+	 WHERE CreatedDate > YESTERDAY
+
+	 ######################################################################################################################################################
+	 
+Q3. 
+
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+																	Picklist Field Questions : 
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+
+Q1. I'm administrator. I added a new picklist value to the existing picklist in the custom field still new values are not showing in drop-down on UI.
+	How to resolve?
+	
+Ans. If the picklist field is a "Dependent Field", then just edit under the field dependencies and add the new picklist value on the available columns.
+	 If you go to the recordtype settings for the standard and custom objects, then click on the recordtype and you'll see the "Picklists Available for Editiing" section
+	 From there you should be able to add the new picklist values.
+	 Picklist values at field level are like a master list. Using Recordtypes, you can allow only a subset of the list to show up.
+	 
+
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+														Custom Settings & Custom Metadada Types Questions : 
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+
+Q1. What are Custom Settings? Why to use them?
+
+Ans. By Library analogy, Custom Settings is a place in Salesforce where we can put easily and frequently accessable data.
+
+	 Benefits : 
+	 Unlike custom objects, which have records based on them, custom settings let us utilize custom data sets across our org in  formula fields, validation rules, flows, Apex, etc.
+	 Hierarchy Custom settings let us distinguish particular users or profiles based on custom criteria.
+	 Custom settings data is exposed in the application cache memory, which enables efficient access without the cost of repeated queries to the database.
+
+	 Example Use Cases : 
+	 A shipping application requires users to fill in the country codes for international deliveries. 
+	 By creating a list setting of all country codes, users have quick access to this data without needing to query the database.
+	 
+	 An application displays a map of account locations, the best route to take, and traffic conditions. 
+	 This information is useful for sales reps, but account executives only want to see account locations. 
+	 By creating a hierarchy setting with custom checkbox fields for route and traffic, you can enable this data for just the “Sales Rep” profile.
+	 
+	 ######################################################################################################################################################
+
+Q2. Types of Custom Settings?
+
+Ans.
+	A. List Custom Settings - They are very similar to Custom Objects and we get same data for every user in org
+		For Example:-  Storing country phone-codes which will be same for all users means static data.
+ 
+	B. Hierarchical Custom Settings - Get data based on profiles or users
+		For Example:-  Amazon is using Salesforce and it is offering different discounts to different set of users.
+		Normal users - 10% Discount
+		Prime users - 20% Discount
+		Amazon Employees - 30% Discount
+	
+		I should ask myself a question if the data has to be accessed based on the type of user.
+		If ans is YES, then I should go for Hierarchical Custom Settings.
+
+	 ######################################################################################################################################################
+	
+Q3. Can we create a custom tab for custom settings?
+
+Ans. No. We can't create a custom tab for custom settings unlike custom tabs fo custom objects.
+
+	 ######################################################################################################################################################
+
+Q4. Can we define hierarchical data in Custom Metadada Types?
+
+Ans. No. We have only one option i.e., Hierarchical Custom Settings.
+	 
+	 ######################################################################################################################################################
+	 
+Q5. Why "Setting type" in Custom Settings is set to Heirarchy by default and there is no option to change it to List?
+
+Ans. This is because it has been outdated and disabled in the backend by the Salesforce.
+	 Salesforce provides Custom Metadata Types as better alternative.
+	 
+	 ######################################################################################################################################################
+
+Q6. Can we enable List Custom Settings?
+
+Ans. Yes. We can enable it in Schema Settings. Enable "Manage List custom settings type" toggle.
+
+	 ######################################################################################################################################################
+
+Q7. Can we define organization-wide default value in Hierarchical Custom Settings?
+
+Ans. Yes. We can.
+
+	 ######################################################################################################################################################
+
+Q8. How to fetch custom settings?
+
+Ans. We can fetch custom settings by either using SOQL or custom settings methods.
+
+	 ######################################################################################################################################################
+
+Q9. What is the recommended way of fetching custom settings and why?
+
+Ans. Best practice is the use of custom settings methods to fetch data.
+	 This is how we can take advantage of its “no governor limit” feature as all custom settings data is exposed in the application cache,
+	 which enables efficient access without the cost of repeated queries to the database.
+	 
+	 ######################################################################################################################################################
+
+Q10. Can we perform SOQL query on Custom settings?
+
+Ans. Yes.
+
+	 ######################################################################################################################################################
+
+Q11. Why performing SOQL query on Custom settings is not recommended?
+
+Ans. This is because querying custom settings data using SOQL doesn't use the application cache and is similar to querying a custom object.
+	 This way we can't take advantage of its “no governor limit” feature.
+	 
+	 ######################################################################################################################################################
+
+Q12. How to fetch all the datasets from List custom setting?
+
+Ans. List<customSettingName__c> obj = customSettingName__c.getAll().values();
+
+	 ######################################################################################################################################################
+
+Q13. What are the List custom settings methods?
+
+Ans. List Custom Setting Methods
+	 The following are instance methods for list custom settings:-
+
+	 getAll() - Returns a map of the data sets defined for the custom setting.
+
+	 getInstance(dataSetName) - Returns the custom setting data set record for the specified data set name. This method returns the exact same object as getValues(dataSetName).
+
+	 getValues(dataSetName) - Returns the custom setting data set record for the specified data set name. This method returns the exact same object as getInstance(dataSetName).
+	 
+	 ######################################################################################################################################################
+
+Q14. What are the Heirarchy custom settings methods?
+
+Ans. Hierarchy Custom Setting Methods
+	 The following are instance methods for hierarchy custom settings:-
+
+	 getInstance() - Returns a custom setting data set record for the current user.
+	 The fields returned in the custom setting record are merged based on the lowest level fields that are defined in the hierarchy.
+
+	 getInstance(userId) - Returns the custom setting data set record for the specified user ID.
+	 The lowest level custom setting record and fields are returned. Use this when you want to explicitly retrieve data for the custom setting at the user level.
+
+	 getInstance(profileId) - Returns the custom setting data set record for the specified profile ID.
+	 The lowest level custom setting record and fields are returned. Use this when you want to explicitly retrieve data for the custom setting at the profile level.
+
+	 getOrgDefaults() - Returns the custom setting data set record for the organization.
+
+	 getValues(userId)
+	 Returns the custom setting data set record for the specified user ID.
+
+	 getValues(profileId)
+	 Returns the custom setting data set for the specified profile ID.
+	 
+	 ######################################################################################################################################################
+
+Q15. Why do we prefer custom object over custom settings?
+
+Ans.
+	The most obvious reason is that we can’t store all the org data in application cache.
+	Also,custom settings have certain limitations:-
+
+	 A.	Limited field types – Custom Settings don't support Formula and Picklist field types 
+	as well as field types that define relationships to other objects, like Lookup and Master/Detail.
+	You can’t create lookups from Custom Objects to Custom Settings either.
+
+	 B.	No validation rules – You can’t define validation rules on Custom Settings.
+	No workflow or triggers – You can’t define workflow rules or triggers on a Custom Setting.
+	Any validation of data, update of related records, or other actions that you might use workflow or a trigger to perform for a Custom Object have to be implemented differently for a Custom Setting.
+
+	 C.	No page layouts or record types – You can’t re-arrange fields on the page layout for Custom Settings.
+	Custom Settings aren’t really intended to be visible to every-day users.
+	If you need them to be, you can create Visualforce pages to allow users to view and manipulate Custom Setting data.
+	
+	 D.	Only 300 fields are allowed in custom settings.
+
+	 E.	Custom Setting counts against total number of custom objects in org.
+	There is a hard limit of 3,000 total custom objects per Organization, regardless of whether they’re created within the Org or installed from the AppExchange.
+	For example, with Unlimited Edition, you could create 2,000 custom objects and install an additional 1,000 objects. 
+	It is not possible to raise this total custom object limit beyond 3,000.
+
+	 F.	No custom tabs for custom settings unlike custom tabs fo custom objects.
+	 
+	 ######################################################################################################################################################
+
+Q16. What are the advantages with custom settings?
+
+Ans.
+	a. No SOQL required - We use the Custom Setting’s GET methods.
+
+	b. Faster access to data. Thus,increases performance.
+
+	c. Avoiding Governor Limits.
+
+	d. Hierarchical Access to Data - Get data based on profiles or users.
+	
+	######################################################################################################################################################
+
+Q17. What are custom metadata types?
+
+Ans. Custom metadata is similar to custom settings except this is deployabe across environments.
+	 We can’t deploy a custom setting or custom object with data through changesets but Custom metadata has this advantage.
+	 
+	 ######################################################################################################################################################
+
+Q18. Why Custom metadata is more than a custom setting but less than a custom object?
+
+Ans. This is because custom metadata type has validation rules and page layouts unlike custom setting.
+	 Also, it is deplyobale with data. Custom Metadata type support picklist and text area(long) field types unlike custom settings.
+	 Also, custom metadata supports lookup on another custom metadata through Metadata Relationship field type.
+	 But custom metadata don't have custom tabs functionality unlike custom objects. We can't create lookup & master-detail relationship.
+	 We can’t store all the org data in application cache.
+	 
+	 ######################################################################################################################################################
+
+Q19. How to fetch custom metadata ?
+
+Ans. We need to do SOQL query like custom objects.
+	 For Example: List <Sample__mdt> obj = [SELECT Name FROM Sample__mdt];
+	 
+	 ######################################################################################################################################################
+
+Q20. Do SOQL query on custom metadata count against governor limits?
+
+Ans. No. SOQL queries on custom metadata doesn't count against governor limits. SOQL queries per Apex transaction is Unlimited.
+     But, SOQL queries containing long text area fields Count toward Apex governor limits.
+	 
+	 ######################################################################################################################################################
+	
+Q21. What are the advantages with custom metadata types?
+
+Ans.
+	a. Deplyobale with data.
+	b. Supports picklist and text area(long) field types.
+	c. Supports lookup on another custom metadata through Metadata Relationship field type.
+	d. Supports validation rules.
+	e. Supports page layouts.
+	
+	######################################################################################################################################################
+
+Q22. Can we Reference the custom metadata values in Process Builder? If yes,then how?
+
+Ans. Yes. we can reference the custom metadata values in Process Builder
+
+	 Syntax:	 $CustomMetadata.CustomMetadataTypeAPIName.RecordAPIName.FieldAPIName
+
+	 Example: $CustomMetadata.AnnualRevenue__mdt.Annual_Revenue.Minimum_Revenue__c
+	 
+	 ######################################################################################################################################################
+
+Q23. How many fields per custom metadata type or record are allowed?
+
+Ans. Max 100 fields per custom metadata type or record are allowed.
+
+	 ######################################################################################################################################################
+
+Q24. How many Custom metadata types per organization are allowed?
+
+Ans. Max 200 Custom metadata types per organization are allowed.This number includes all types developed in the org and installed from managed and unmanaged packages.
+	 
+	 ######################################################################################################################################################
+
+Q25. Can we use custom settings & custom metadata types in Formula fields?
+
+Ans. Yes. We can.
+
+	 ######################################################################################################################################################
+
+Q26. Where can we use Custom Settings Data?
+
+Ans. Formula fields, validation rules, flows, Apex, and SOAP API can then use this data.
+
+	 ######################################################################################################################################################
+
+Q27. Can we Reference the custom metadata values in Formula fields? If yes,then how?
+
+Ans. Yes. we can reference the custom metadata values in Formula fields. But, Long text area fields aren't supported in formula references.
+
+	 Syntax:	$CustomMetadata.CustomMetadataTypeAPIName.RecordAPIName.FieldAPIName
+
+	 Example: $CustomMetadata.AnnualRevenue__mdt.Annual_Revenue.Minimum_Revenue__c
+	 
+	 ######################################################################################################################################################
+
+Q28. Why should we reference the custom metadata values in Formula fields?
+
+Ans. If a field value changes, we can update it in the custom metadata type instead of changing multiple, hard-coded formulas.
+
+	 ######################################################################################################################################################
+
+Q29. Can we reference a custom metadata type record in a default value? If yes,then how and why?
+
+Ans. Yes. we can reference a custom metadata type record in a default value.
+
+	 Syntax:	$CustomMetadata.CustomMetadataTypeAPIName.RecordAPIName.FieldAPIName
+
+	 Example: $CustomMetadata.AnnualRevenue__mdt.Annual_Revenue.Minimum_Revenue__c 
+
+	 If a default field value changes, you can update it in the custom metadata type instead of updating multiple field references.
+	 
+	 ######################################################################################################################################################
+
+Q30. Can we use List Custom Settings in Workflow, Visualforce, Process Builder, and Formula Fields?
+
+Ans. No. Currently, we can only use Hierarchy Custom Settings in Workflow, Visualforce, Process Builder, and Formula Fields.
+
+	 ######################################################################################################################################################
+
+Q31. How to fetch Hierarchy Custom Settings values in Workflow, Visualforce, Process Builder, and Formula Fields?
+
+Ans.
+	 Syntax:  $Setup.CustomSettingAPIName.FieldAPIName
+
+	 Example: $Setup.Org_Exceptions__c.Sales_Profiles__c
+
+	 Here fieldFieldAPIName will fetch the field value based on the user or profile that user is logged in.
+	 
+	 ######################################################################################################################################################
+
+Q32. Can we create and manage custom metadata types programmatically?
+
+Ans. Yes. we can create and manage custom metadata types programmatically using Custom Metadata Types (CustomObject) in Metadata API.
+
+	 ######################################################################################################################################################
+
+Q33. Can we create lookups from Custom Objects to Custom Settings?
+
+Ans. No. We can’t create lookups from Custom Objects to Custom Settings.
+
+	 ######################################################################################################################################################
+
+Q34. Can we create lookups from Custom metadata to another custom metadata?
+
+Ans. Yes. Custom metadata supports lookup on another custom metadata through Metadata Relationship field type.
+
+	 ######################################################################################################################################################
+
+Q35. How to use Custom Settings and Custom Metadata types in Test class?
+
+Ans. To use custom settings in test class:
+
+	 Custom Settings are "Data" and just like normal sObjects, our Test Context environment doesn't have access to the custom setting records already in the database.
+	 
+	 Preferred solution : 
+	 We can perfectly, insert a new Custom Setting record, in our test context like we would normally do with an sObject.
+
+	 Example_custom_setting__c setting = new Example_custom_setting__c();
+	 setting.Name = 'Test Setting';
+	 setting.Value__c = 'Example';
+	 insert setting;
+	 
+	 Alternate solution : 
+     Declare our method with the @isTest(SeeAllData=true).
+	 This way our testmethod has visility over the data in the database, outside of the test context. 
+	 However, these testmethods might fail in cases where there is no data in the custom setting.
+	 
+	 
+	 To use custom Metadata types in test class:
+	 
+	 Unlike Custom Settings, Custom metadata type records are not "Data" but are part of application configuration, and since they can be included in changesets and packages, 
+	 Custom metadata types are set up the same way as workflow and validation rules, not like sObject records. 
+	 Apex test classes can see custom metadata types and access their fields and records, even if they aren’t using @IsTest(SeeAllData=true)
+	 
+	 ######################################################################################################################################################
+	 
+Q36. How to deploy custom settings data to another org?
+
+Ans. The custom settings records are not deployed via change set, only the metadata are deployed. 
+	 To migrate the records we should use dataloader(or workbench) to export the values from our org into a csv file and 
+	 then import that csv file to another org also using dataloader(or workbench).
+
+	 ######################################################################################################################################################
+
+Q37. 
+
+Ans.
+*****************************************************************************************************************************************************************
+*****************************************************************************************************************************************************************
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1. how you can install package from personal org to company sandbox deployment process
+4. can I call a future method from batch class
+5. write a test class for batch class
+6. pass data from vf page to controller
+7. Actionparams in the action function
+8. oops concept in salesforce
+9. polymorphism in apex
+10. overloading a constructor
+11. method overriding
+12. assert statement in the test class
+13. how can we maintain the chain of batch classes
+14. want to change the value of field(max 100 allowed using validation rule) from 50 to 200 using workflow, will it change, 2. want to update to 200 using before insert, then will it change
+15. how many batch classes we can run at the same time
+16. how can I restrict access of RECORDS from higher hierarchy level
+17. how can I stop the execution of trigger, workflow and validation rules while data uploader
+18.  running time-dependent workflow at less than minimum time
+19. different criteria of workflow
+20. workflow actions
+21. pagination implementation, standard set controller
+22. changeset
+23. validation rule to skip picklist values
+24. inline VF pages display the same object data
+25. difference between Enterprise WSDL and partner WSDL
+26. permission set and profile
+27. can we write DML and SOQL in the constructor
+28. profile is same, no record type change, how can I control the visibility of fields
+29. role hierarchy custom top-level visibility
+30. execution order
+31. workflow trigger 
+32. vf pages
+33. ways u can call the controller method
+34. email service
+35. show account and contacts on vf page, optimization
+36. search account from vf page.. input.. ways u can achieve
+37. undelete
+38. does after trigger work on delete
+39. hierarchy level custom setting
+40. how to take the backup of your org or metadata
+41. how can I deploy my components
+42. challenges you have faced in your project
+43. how to fetch data of custom settings
+44. custom label
+45. how can I show the picklist value as the US if user login from US, picklist value cannot be changed
+46. what is an extension, how to create an extension
+47. how to override the functionality of standard buttons
+48. email to case
+49. test class consideration
+50. how to display the count of total execution of executing method in batch class
+51. diff between database.update and update
+52. what parameters does start method of batch class takes
+53. assign apex class in vf email template
+54. bucket list in report
+55. view state of visual force page
+56. visualforce sites
+57. difference between sales and service cloud
+58. difference between process builder and workflow
+59. how can i use ajax in visualforce (with or without vf tags)
+60.  why do we use one test class per controller
+61. dynamic apex
+62. apex class syntax
+62.1. Enforce Field-Level Security Permissions for SOQL Queries (Beta)
+63. display records on page load
+64. display account, opportunity and contacts on single vf page
+65. calling callouts in trigger
+66. can we use dml statement in constructor
+67. sendredirect method and pagereference 
+68. commandbutton's action rerender child panel and oncomplete event rerender parent panel, how many time rerendring happen
+69. event in undelete ( before or after)
+70. map<sObject,string>
+71. can i skip any method of batch class
+72. can i deploy so many validation rules at once in production
+73. roll up summary average
+74. workflow1- a->b.... wf2- b->a.... chain
+75. can i restore deleted items, deleted from recycle bin, hard delete
+76. object level security controlled by
+77. formula field in before trigger
+78. salesforce security model
+79. transient and static keyword
+80. account object owd
+81. can we call a batch class from future method
+82. diff bw inputfield and inputtext
+83. diff bw actionfunction and remoteaction
+84. apex:detail
+85. if two extension have same method than which will run
+86. what parameters does future method accept
+87. why future method does not accept sobjects
+88. freeze and activate button on user profile, can we delete a user in salesforce
+89. diff bw rest and soap
+90. return type start method batch class
+91. iterator in batch class
+92. visualforce components
+93. two parameter that are used for integration
+94. deploy custom settings
+95. diff betweem soql and sosl
+96. can we update child record field from parent object in worlflow- no
+97.  what is viewstate and how to reduce size of viewstate
+98. savepoint and rollback
+99. iterate through map or set in Visualforce
+100. options available in owd
+101. what is scontrol
+102. mergefields in Visualforce
+103. Salesforce architecture
+104. flex queue, apex jobs difference
+105. rollup summary for lookup
+106. who gets the ownership in two master detail field
+107. with sharing and without sharing 
+108. external id use in Salesforce
+109. apex governor limits
+110. restriction of permission sets
+111. validation error in apex class
+112. can test method be private
+113. why data loader uses csv format
+114. difference between actionfunction and JavaScript remoting
+115. hide custom settings from user
+116. can we make batch classes synchronous
+117. visualforce page, apex class, test method, future method, apex trigger, batch apex consideration/best practices
+118. can we pick user name from visualforce page in approval process
+119. what should we use, remoteaction or actionfunction, which is best
+120. can static variable be transient
+121. how to use assert statement for batch apex test method
+122. standard junction object in salescloud
+123. find count of active contacts for each account in given set
+124. default page load time to throw timeout exception
+125. pagination in Salesforce standardrecordset or offset
+126. actionstatus and actionsupport difference
+127. what happens if batch is terminated in between
+128. can we have multiple active approval request on the  same object
+129. how to redirect to different vf page when clicked on edit page based on user profile
+130. Trigger.newmap in before insert
+131. If scheduled job user leaves company, how you can reschedule it
+132. How to avoid Bulk API upload’s row lock error for same parent records. Or how process them serially
+133. How 
+134. Can a trigger call a batch class? - Yes
+
+
+
+
+
+
+	new
+	newMap
+	old
+	oldMap
+	Before Insert
+	Yes(without id)
+	
+
+	
+
+	
+
+	After Insert
+	Yes (record can be modified)
+	Yes
+	
+
+	
+
+	Before Update
+	Yes
+	Yes
+	Yes
+	Yes
+	After Update
+	Yes (record can be modified)
+	Yes
+	Yes
+	Yes
+	Before Delete
+	
+
+	
+
+	Yes
+	Yes
+	After Delete
+	
+
+	
+
+	Yes
+	Yes
+	After Undelete
+	Yes (record can be modified)
+	Yes
+
+
+==============new=============
