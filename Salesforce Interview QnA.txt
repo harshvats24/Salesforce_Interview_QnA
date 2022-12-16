@@ -266,7 +266,151 @@ Ans.
 																			Asynchronous Apex Questions : 
 ***************************************************************************************************************************************************************************************
 ***************************************************************************************************************************************************************************************
-Q1.	Why do we still use future methods if we have better asynchronous tool in the form of Queueable class ?
+Q1. Why do we use Future Methods?
+
+Ans. we call a future method for asynchronously execute long-running operations, such as callouts to external Web services 
+	 or any operation we’d like to run in its own thread, on its own time.
+	 
+Q2. Can we call the future method in batch class?
+
+Ans. No we can’t, because Calling a future method is not allowed in the Batch Jobs.
+	 
+Q3. Can you write the syntax of a future method?
+
+Ans. Methods with the future annotation must be static methods, and can only return a void type.
+
+			@future
+			public static void myFutureMethod()
+			{   
+				 // Perform some operations
+			}
+Q4. Can future methods return another data type except a void type?
+
+Ans. No. As it runs in future context, it cannot return any output to us in that point of time.
+
+Q5. What kinds of parameters supported in Future methods?
+
+Ans. We can pass primitive data types, arrays of primitive data types, or collections of primitive data types as parameters. 
+	 No sObjects OR objects can be passed as arguments.
+	 
+Q6. Why sobject type parameters are not supported in Future methods?
+
+Ans. The reason why sObjects can’t be passed as arguments to future methods is that the sObject record might change between the time we call the method and the time it executes. 
+	 In this case, the future method will get the old sObject record values and might overwrite them which will lead to inconsistency.
+	 
+Q7. What could be the workaround for sobject types?
+
+Ans. To work with sObjects, pass the sObject ID instead (or collection of IDs) and use the ID to perform a query for the most up-to-date record.
+
+		public class FutureMethodRecordProcessing
+		{
+			@future
+			public static void processRecords(List<ID> recordIds)
+			{   
+				 // Get those records based on the IDs
+				 // Process records
+			}
+		}
+	 
+Q8. What are the use cases of future method?
+
+Ans. 
+		1. Callouts to external Web services 
+		2. Perform asynchronous operations
+		3. Isolating DML operations on different sObject types to prevent the mixed DML Exception.
+
+Q9. How can I perform Callouts from Future methods?
+
+Ans. We need to add a parameter callout=true in @future.
+
+	global class FutureMethodExample
+	{
+		@future(callout=true)
+		public static void doCallouts(String name)
+		{   
+			 // Perform a callout to an external service
+		}
+	}
+		
+Q10. Can I write a future call in Trigger?
+
+Ans. Yes, we can.
+
+Q11. So, consider a case, I have Written a future call in the Account’s trigger update operation and
+   I have a batch job running on Account records and does DML on them. 
+   Will the future call be invoked after DML?
+   
+Ans. Since you are in batch context, the trigger runs in the same context too, 
+	 So as soon as the Account records get updated through the batch process or through any future method, 
+	 the trigger would throw an exception saying “Future method cannot be called from a future or batch method” 
+	 as a future method cannot be invoked from future or batch method execution context.
+	 
+Q12. How can avoid this Exception condition, Without using try-catch?
+
+Ans. We can update the trigger logic to leverage the System.isFuture() and System.isBatch() calls 
+	 so that the future method invocation is not made if the current execution context is future or batch.
+
+		trigger AccountTrigger on Account (after insert, after update) 
+		{
+			if(!System.isFuture() && !System.isBatch())
+			// future method call
+		}
+
+Q13. So In Any case, I can’t call a future method from a batch Job?
+
+Ans. Calling a future method is not allowed in the Execute method, But a web service can be called. A web service can also call a @future method. 
+	 So, we can define a web service having a future method invocation and call the web service from the execute method of Batch Job.
+
+Q14. Can we call the batch into another batch apex?
+
+Ans. Yes, we can call from the finish() method.
+
+Q15. How Many Future methods can be defined in a Class?
+
+Ans. Any number of. There are no restrictions as such.
+
+Q16. Take the below case : 
+
+		global class FutureMethodExample
+		{
+			@future(callout=true)
+			public static void doCallouts(String name)
+			{   
+				 // Perform a callout to an external service
+				 doCallouts2(name);
+		}
+		@future
+			public static void doCallouts2(String name)
+			{   
+				 // Perform a callout to an external service
+			}
+		}
+		
+	How many future calls will the above code invoke?
+	
+Ans. This code is an invalid code as a future method can’t invoke another future method.
+
+Q17. If I want to call a future method from a future method, what could be the solution?
+
+Ans. Workaround could be calling a web service that has future invocation.
+
+Q18. Once I call a future method, How can I trace its execution?
+
+Ans. Salesforce uses a queue-based framework to handle asynchronous processes from such sources as future methods and batch Apex. 
+	 So, We can check the apex jobs if it has run or not.
+
+	 But if it in the queue, and resources are not available, It won’t show up on Apex jobs Page, So we can poll AsyncApexJob object to get its status.
+
+	 However, future methods don’t return an ID, so We can’t trace it directly. 
+	 We can use another filter such as MethodName, or JobType, to find the required job.
+
+Q19. How to test a future method?
+
+Ans. To test methods defined with the future annotation, call the class containing the method in a startTest(), stopTest() code block. 
+	 All asynchronous calls made after the startTest method are collected by the system. 
+	 When stopTest is executed, all asynchronous processes are run synchronously.
+	 
+Q20. Why do we still use future methods if we have better asynchronous tool in the form of Queueable class ?
 
 Ans. Another reason to use future methods instead of queueable clss is when our functionality is sometimes executed synchronously, and sometimes asynchronously. 
 	 It’s much easier to refactor a method in this manner than converting to a queueable class. 
@@ -279,6 +423,16 @@ Ans. Another reason to use future methods instead of queueable clss is when our 
 		 // call synchronous method
 		 mySynchronousMethod(params);
 	 }
+
+Q21. Can we call batch apex into another batch in execute method?
+
+Ans. No. We can chain batches only through the finish() method. 
+	 The reason for this is that the execute() method will be called many times for a given batch start() ,
+	 and this can get out of hand with too many batches scheduled.
+	 
+	 If you will call another batch class from batch class execute() and start() methods, then Salesforce will throw below runtime error :
+
+	 System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method.
 
 ***************************************************************************************************************************************************************************************
 ***************************************************************************************************************************************************************************************
