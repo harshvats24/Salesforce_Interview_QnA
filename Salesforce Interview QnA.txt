@@ -300,7 +300,11 @@ Ans. The reason why sObjects can’t be passed as arguments to future methods is
 	 
 Q7. What could be the workaround for sobject types?
 
-Ans. To work with sObjects, pass the sObject ID instead (or collection of IDs) and use the ID to perform a query for the most up-to-date record.
+Ans. To work with sObjects, 
+
+	 Workaround 1 :
+	 
+	 pass the sObject ID(or collection of IDs) and use the ID to perform a query for the most up-to-date record.
 
 		public class FutureMethodRecordProcessing
 		{
@@ -310,6 +314,43 @@ Ans. To work with sObjects, pass the sObject ID instead (or collection of IDs) a
 				 // Get those records based on the IDs
 				 // Process records
 			}
+		}
+		
+	 Workaround 2 :
+	 
+	 Using JSON.Serialize() and Json.deserialize() methods.
+	 
+	 AccountTrigger ----
+
+		Trigger AccountTrigger_AT on Account (after insert)
+		{
+
+		   //Using JSON.Serialize method we can convert the account list to Json
+
+			String jsonString = json.serialize(Trigger.NEW);
+
+		   // Pass the JSON String to the Future method
+
+			AccountTriggerHandler_AC.processAccountData(jsonString);
+
+		}
+		
+	 AccountTriggerHandler_AC ---
+
+		Public class AccountTriggerHandler_AC
+		{
+		   @future
+		   public static void processAccountData(String jsonString)
+		   {
+				//deserialize the JSON to the Account List
+
+				List<Account> accountList = (List<Account>)Json.deserialize(jsonString,List<Account>.class);
+
+				//Printing the Account List
+
+				System.debug(‘---Account List---’+’accountList);
+		   }
+
 		}
 	 
 Q8. What are the use cases of future method?
