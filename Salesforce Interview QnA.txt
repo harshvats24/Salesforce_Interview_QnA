@@ -258,9 +258,66 @@ Ans. Mixed DML Exception occurs if we are trying to perform DML operations on se
 		}
      }
 
-Q6. 
+Q6. Explain With sharing, without sharing and inherited sharing in detail.
 
-Ans. 
+Ans. With Sharing, without sharing and inherited sharing are keywords which are used in a class definition. These keywords come into picture when we keep 
+	 sharing rules in our mind and whether sharing rules must be enforced or not.
+	 
+	 In a class declaration if we don't write any of the above three keywords(omitted sharing declaration), then the class runs in system mode.
+	 
+	 With Sharing : 
+	 Use the with sharing keyword when declaring a class to enforce sharing rules of the current user. 
+	 Explicitly setting this keyword ensures that Apex code runs in the current user context.
+	 
+	 public with sharing class sampleClassA 
+	 {
+	 
+	 }
+	 
+	 Without Sharing : 
+	 Use the without sharing keyword when declaring a class to ensure that the sharing rules for the current user are not enforced. 
+	 For example, you can explicitly turn off sharing rule enforcement when a class is called from another class that is declared using with sharing.
+	 
+	 public without sharing class sampleClassB
+	 {
+	 
+	 }
+	 
+	 Inherited Sharing : 
+	 Use the inherited sharing keyword when declaring a class to enforce the sharing rules of the class that calls it. 
+	 Using inherited sharing is an advanced technique to determine the sharing mode at runtime and 
+	 design Apex classes that can run in either with sharing or without sharing mode.
+	 
+	 public inherited sharing class sampleClassC
+	 {
+	 
+	 }
+	 
+	 Best Practice : Apex without an explicit sharing declaration is insecure by default. 
+					 Salesforce strongly recommend that we always specify a sharing declaration for a class.
+					 
+	 Important points : 
+	 
+	 * Classes inherit sharing setting from a parent class when one class extends or implements another.
+	 * The sharing setting of the class where a method is defined is applied, not of the class where the method is called from. 
+	   For example, if a method is defined in a class declared as with sharing is called by a class declared as without sharing, 
+	   the method executes with sharing rules enforced.
+	 * Both inner classes and outer classes can be declared as with sharing. Inner classes do not inherit the sharing setting from their container class.
+	 
+Q7. What is the difference between an Apex class that is marked with inherited sharing and one with an omitted sharing declaration?
+
+Ans. If the class is used as the entry point to an Apex transaction, an omitted sharing(without any keyword) declaration runs as without sharing by default. 
+	 But in the same scenario, inherited sharing declaration runs as with sharing by default.
+	 
+Q8. In a class declaration if we don't write any of the above three keywords(omitted sharing declaration), then the class runs in system mode. 
+	So, what is the use of without sharing?
+
+Ans. Example : 
+	 There is a classA declared using “with sharing” and it calls classB method. 
+	 classB is not declared with any keyword then by default “with sharing” will be applied to that class because originating call is done through classA. 
+	 To avoid this we have to explicitly define classB with keyword “without sharing”.
+
+
 ***************************************************************************************************************************************************************************************
 ***************************************************************************************************************************************************************************************
 																			Asynchronous Apex Questions : 
@@ -1097,7 +1154,7 @@ Ans.
 104. flex queue, apex jobs difference
 105. rollup summary for lookup
 106. who gets the ownership in two master detail field
-107. with sharing and without sharing 
+
 108. external id use in Salesforce
 109. apex governor limits
 110. restriction of permission sets
